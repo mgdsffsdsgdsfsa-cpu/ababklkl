@@ -1,0 +1,2819 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>世家谱系录</title>
+    <!-- 引入外部资源 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* =============================================
+           1. 样式变量与基础定义
+           ============================================= */
+        :root {
+            --ink: #1f1f1f;
+            --cinnabar: #c02c38;
+            --text-main: #333;
+            --text-secondary: #777;
+            --bg-canvas: #f4f2ed;
+
+            /* 阶级色彩定义 */
+            --c-royal: #B27777;
+            /* 皇室金 */
+            --c-branch: #c08165;
+            /* 宗室赭 */
+            --c-noble: #31445b;
+            /* 世族青 */
+            --c-poor: #6e8d7f;
+            /* 寒门灰 */
+            --c-emperor: #701318;
+            /* 威严朱红 */
+
+            --font-stack: "Huiwen-mincho", "汇文明朝体", "Noto Serif SC", "Songti SC", serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: var(--font-stack);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #50453f;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+        }
+
+        /* =============================================
+           2. 顶部导航与工具栏
+           ============================================= */
+        header {
+            background: #2d2623;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 200;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 18px;
+            color: #d8cbb8;
+            letter-spacing: 4px;
+            font-weight: 300;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid #666;
+            color: #ccc;
+            padding: 5px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            border-radius: 2px;
+        }
+
+        .btn:hover {
+            border-color: var(--cinnabar);
+            color: #fff;
+            background: #3e3632;
+        }
+
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .btn-gold {
+            background: var(--c-royal);
+            color: #fff;
+            border-color: var(--c-royal);
+        }
+
+        .btn-gold:hover {
+            background: #dcb67f;
+            border-color: #dcb67f;
+        }
+
+        .btn-highlight {
+            background: var(--cinnabar);
+            color: #fff;
+            border-color: var(--cinnabar);
+        }
+
+        /* =============================================
+           3. 主布局与左侧列表
+           ============================================= */
+        .container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 50px);
+        }
+
+        .sidebar-left {
+            width: 180px;
+            background: #fcf9f2;
+            border-right: 1px solid #dcdcdc;
+            display: flex;
+            flex-direction: column;
+            z-index: 90;
+        }
+
+        .sb-header {
+            padding: 15px;
+            color: #5d4e44;
+            border-bottom: 1px solid #eee;
+            font-weight: bold;
+        }
+
+        .fam-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .fam-item {
+            padding: 10px 15px;
+            border-left: 5px solid transparent;
+            cursor: grab;
+            position: relative;
+            transition: 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .fam-item.active {
+            background: #fff5f5;
+            border-left-width: 5px;
+        }
+
+        .fam-del {
+            position: absolute;
+            right: 10px;
+            top: 12px;
+            color: #ccc;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .fam-del:hover {
+            color: red;
+        }
+
+        .fam-tag-mini {
+            font-size: 9px;
+            padding: 0 4px;
+            background: rgba(0, 0, 0, 0.05);
+            color: #888;
+            border-radius: 2px;
+        }
+
+        /* 家族等级色 */
+        .type-imperial {
+            border-left-color: #701318 !important;
+        }
+
+        .type-noble {
+            border-left-color: #31445b !important;
+        }
+
+        .type-official {
+            border-left-color: #6e8d7f !important;
+        }
+
+        .type-common {
+            border-left-color: #999 !important;
+        }
+
+        /* =============================================
+           4. 中间画布区域
+           ============================================= */
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            cursor: grab;
+            background-color: var(--bg-canvas);
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+        }
+
+        #family-canvas {
+            position: absolute;
+            width: 8000px;
+            height: 8000px;
+            transform-origin: 0 0;
+        }
+
+        #watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 200px;
+            color: rgba(0, 0, 0, 0.04);
+            writing-mode: vertical-rl;
+            pointer-events: none;
+        }
+
+        .svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* 代数背景色带 */
+        .gen-strip {
+            position: absolute;
+            width: 220px;
+            height: 20000px;
+            top: -5000px;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.05) 50%, rgba(0, 0, 0, 0.02) 100%);
+            border-left: 1px solid rgba(0, 0, 0, 0.03);
+            border-right: 1px solid rgba(0, 0, 0, 0.03);
+            pointer-events: none;
+        }
+
+        .gen-label {
+            position: absolute;
+            top: 5005px;
+            right: -60px;
+            font-size: 100px;
+            color: rgba(0, 0, 0, 0.1);
+            font-weight: 1000;
+        }
+
+        /* =============================================
+           5. 人物卡片样式
+           ============================================= */
+        .card {
+            position: absolute;
+            width: 170px;
+            background: #fff;
+            cursor: pointer;
+            z-index: 10;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            z-index: 100;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .card.selected {
+            outline: 2px solid var(--cinnabar);
+            outline-offset: 2px;
+        }
+
+        /* 阶级样式映射 */
+        .style-emperor {
+            background: linear-gradient(to bottom, #ffffff 60%, #fff8e1 100%);
+            border-bottom: 4px solid #b03838;
+        }
+
+        .style-royal {
+            background: #fcf9f2;
+            border-bottom: 3px solid #701318;
+        }
+
+        .style-branch {
+            background: #fcf9f2;
+            border-bottom: 3px solid #c08165;
+        }
+
+        .style-noble {
+            background: #f5f8ff;
+            border-bottom: 3px solid #31445b;
+        }
+
+        .style-official {
+            background: #f5fff8;
+            border-bottom: 3px solid #6e8d7f;
+        }
+
+        .style-common {
+            background: #fff;
+            border-bottom: 3px solid #ccc;
+        }
+
+        .card-img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            background: #e0e0e0;
+            display: block;
+        }
+
+        .card-badge {
+            position: absolute;
+            top: 0;
+            left: 12px;
+            writing-mode: vertical-rl;
+            padding: 8px 4px 6px 4px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            letter-spacing: 3px;
+            box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
+            border-radius: 0 0 4px 4px;
+            z-index: 20;
+        }
+
+        /* 签条色 */
+        .style-emperor .card-badge {
+            background: #b03838;
+            border: 1px solid #d4af37;
+            border-top: none;
+        }
+
+        .style-royal .card-badge {
+            background: #701318;
+        }
+
+        .style-branch .card-badge {
+            background: #c08165;
+        }
+
+        .style-noble .card-badge {
+            background: #31445b;
+        }
+
+        .style-official .card-badge {
+            background: #6e8d7f;
+        }
+
+        .style-common .card-badge {
+            background: #999;
+        }
+
+        .card-body {
+            width: 100%;
+            padding: 10px 8px;
+            text-align: center;
+        }
+
+        .card-name {
+            font-size: 22px;
+            font-weight: 900;
+            color: #000;
+            margin-bottom: 4px;
+        }
+
+        .style-emperor .card-name {
+            color: #b03838;
+            text-shadow: 0 1px 0 rgba(212, 175, 55, 0.3);
+        }
+
+        .card-info {
+            font-size: 12px;
+            color: #666;
+            border-bottom: 1px dashed rgba(0, 0, 0, 0.15);
+            padding-bottom: 5px;
+            width: 90%;
+            margin: 0 auto 5px auto;
+        }
+
+        .tag {
+            font-size: 10px;
+            color: #666;
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 1px 4px;
+            border-radius: 2px;
+        }
+
+        .tags-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        /* 已故状态 */
+        .card.dead .card-img {
+            filter: grayscale(100%) contrast(0.9);
+            opacity: 0.8;
+        }
+
+        .card.dead .card-name::after {
+            content: " [故]";
+            font-size: 0.6em;
+            color: #999;
+            vertical-align: middle;
+        }
+
+        /* =============================================
+           6. 右侧编辑侧边栏
+           ============================================= */
+        .sidebar-right {
+            position: fixed;
+            right: 0;
+            top: 50px;
+            height: calc(100vh - 50px);
+            width: 300px;
+            background: #fff;
+            border-left: 1px solid #dcdcdc;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-right::before {
+            content: "";
+            position: absolute;
+            left: -50px;
+            top: 0;
+            width: 50px;
+            height: 100%;
+            background: transparent;
+        }
+
+        .sidebar-right:hover,
+        .sidebar-right.active {
+            transform: translateX(0);
+        }
+
+        .form-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .sidebar-right:hover .form-content,
+        .sidebar-right.active .form-content {
+            opacity: 1;
+        }
+
+        .form-header {
+            font-size: 16px;
+            font-weight: bold;
+            border-left: 3px solid var(--ink);
+            padding-left: 10px;
+            margin-bottom: 20px;
+        }
+
+        .img-upload {
+            width: 120px;
+            height: 170px;
+            border: 1px dashed #999;
+            margin: 0 auto 20px 0;
+            background: #f9f9f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .img-upload img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        .img-upload.has-img img {
+            display: block;
+        }
+
+        .img-upload.has-img i {
+            display: none;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            position: relative;
+            padding-top: 15px;
+        }
+
+        .form-label {
+            position: absolute;
+            top: 0;
+            left: 0;
+            font-size: 11px;
+            color: #999;
+        }
+
+        .form-input {
+            width: 100%;
+            border: none;
+            border-bottom: 1px solid #ccc;
+            padding: 5px 0;
+            font-size: 14px;
+            outline: none;
+            background: transparent;
+        }
+
+        .form-input:focus {
+            border-bottom-color: var(--cinnabar);
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            background: #fdfdfd;
+            border-top: 1px solid #eee;
+        }
+
+        .btn-rect {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            background: #fff;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-rect:hover {
+            border-color: var(--cinnabar);
+            color: var(--cinnabar);
+        }
+
+        .btn-fill {
+            background: var(--cinnabar);
+            color: #fff;
+            border-color: var(--cinnabar);
+        }
+
+        /* =============================================
+           7. 浮动面板与弹窗
+           ============================================= */
+        .rel-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 20px;
+            border-radius: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+            display: none;
+            z-index: 200;
+            backdrop-filter: blur(5px);
+            border: 1px solid #eee;
+        }
+
+        .rel-btn {
+            background: none;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            color: #555;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .rel-btn:hover {
+            color: var(--cinnabar);
+        }
+
+        .zoom-ctrl {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            z-index: 110;
+            display: flex;
+            gap: 5px;
+        }
+
+        .zoom-ctrl button {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #ccc;
+            background: #fff;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .modal-mask {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal {
+            background: #fff;
+            width: 300px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--ink);
+        }
+
+        .modal-opt {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 1px solid #ddd;
+            background: #fff;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        /* AI 悬浮按钮 */
+        .ai-btn-new {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--cinnabar);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .ai-btn-new:hover {
+            transform: scale(1.1) rotate(-10deg);
+            background: #a5242d;
+        }
+
+        /* =============================================
+            8. 左侧分类标题和拖拽状态的样式
+           ============================================= */
+
+        /* 分类标题样式 */
+        .fam-group-header {
+            background: #e9e4d9;
+            padding: 5px 15px;
+            font-size: 11px;
+            color: #8c7e6a;
+            font-weight: bold;
+            border-bottom: 1px solid #dcdcdc;
+            margin-top: 5px;
+        }
+
+        /* 正在拖拽的样式 */
+        .fam-item.dragging {
+            opacity: 0.5;
+            background: #f0f0f0;
+        }
+
+        /* 修改鼠标指针为手型（原来的 move 改为 pointer） */
+        .fam-item {
+            cursor: pointer;
+        }
+
+        /* 只有在按下鼠标点击准备拖拽时，才显示抓取手势 */
+        .fam-item:active {
+            cursor: grabbing;
+        }
+
+        /* 自定义关系的文字标签样式 */
+        .rel-label {
+            font-size: 11px;
+            fill: #555;
+            paint-order: stroke;
+            stroke: #f4f2ed;
+            /* 这里必须对应你的画布背景色 */
+            stroke-width: 6px;
+            /* 稍微加厚，确保完全遮住下方的线 */
+            text-anchor: middle;
+            cursor: pointer;
+            pointer-events: auto !important;
+            user-select: none;
+            font-weight: bold;
+        }
+
+        /* 柔和曲线的动画效果（可选） */
+        .custom-link {
+            transition: stroke-dashoffset 2s;
+            pointer-events: all;
+        }
+
+        /* 1. 画布基础层级调整 */
+        #nodes-layer {
+            position: absolute;
+            z-index: 20;
+            /* 人物卡片在 20 层 */
+            pointer-events: none;
+            /* 让点击穿透层，但卡片本身会设置 auto */
+        }
+
+        .card {
+            pointer-events: auto;
+            /* 确保卡片能点到 */
+        }
+
+        .svg-layer {
+            position: absolute;
+            z-index: 10;
+            /* 连线在 10 层，躲在卡片后面 */
+            pointer-events: none;
+        }
+
+        /* 2. 文字标签层级：必须高于卡片才能被点击调节 */
+        .rel-label {
+            font-size: 11px;
+            fill: #555;
+            paint-order: stroke;
+            stroke: #f4f2ed;
+            /* 背景色描边，产生断线感 */
+            stroke-width: 5px;
+            text-anchor: middle;
+            cursor: pointer;
+            pointer-events: auto !important;
+            user-select: none;
+            font-weight: bold;
+            z-index: 100;
+            /* 文字浮在最上方 */
+        }
+
+        .rel-label.active {
+            fill: var(--cinnabar) !important;
+        }
+
+        /* =============================================
+           9. V2 卡片样式增强
+           ============================================= */
+        .card-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin: 5px 0 8px 0;
+        }
+
+        .card-tab {
+            font-size: 10px;
+            color: #666;
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 1px 5px;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .card-tab:hover {
+            background: #e0e0e0;
+            color: #000;
+        }
+
+        .card-official-post {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .card-official-post span {
+            font-weight: bold;
+        }
+
+
+        /* 1. 名字下方的灰色信息条 */
+        .info-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #e6e6e6;
+            /* 浅灰色背景 */
+            margin: 4px 10px;
+            /* 上下边距 */
+            padding: 2px 0;
+            border-radius: 2px;
+        }
+
+        /* 信息条里的“按钮” (属性/记事) */
+        .info-btn {
+            font-size: 11px;
+            color: #333;
+            padding: 0 6px;
+            border-right: 1px solid #ccc;
+            /* 右边的小竖线 */
+            cursor: pointer;
+            font-weight: bold;
+            background: #d4d4d4;
+            /* 按钮稍微深一点灰色，区分感 */
+            margin-right: 2px;
+        }
+
+        .info-btn:hover {
+            background: #bbb;
+        }
+
+        /* 信息条里的“文字” (年龄/状态) */
+        .info-text {
+            font-size: 10px;
+            /* 字体改小，更精致 */
+            color: #444;
+            padding: 0 5px;
+            font-weight: bold;
+            /* 加粗一点看得清 */
+            white-space: nowrap;
+            /* 防止换行 */
+        }
+
+        /* 2. 状态颜色 */
+        .status-red {
+            color: #d90000 !important;
+        }
+
+        /* 已故/重病用红色 */
+        .status-normal {
+            color: #444;
+        }
+
+        /* 3. 出身和官职行 */
+        .line-origin,
+        .line-official {
+            font-size: 13px;
+            /* 稍微大一点 */
+            margin: 3px 0;
+            color: #333;
+        }
+
+        .line-official {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        /* 4. 虚线分割线 */
+        .card-divider {
+            border-top: 1px dashed #ccc;
+            margin: 6px 10px;
+            height: 1px;
+        }
+
+        /* 5. 底部标签 (原有的tag) 保持原样，微调位置 */
+        .tags-wrap {
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+
+        /* 6. 官职等级颜色 */
+        .rank-purple {
+            color: #800080;
+        }
+
+        /* 紫 */
+        .rank-red {
+            color: #cc0000;
+        }
+
+        /* 绯红 */
+        .rank-green {
+            color: #008000;
+        }
+
+        /* 绿 */
+        .rank-blue {
+            color: #0000FF;
+        }
+
+        /* 青 */
+
+        /* === 修正后的信息条样式 (V3) === */
+
+        /* 1. 容器：不再有灰色背景，只负责排版 */
+        .info-bar {
+            display: flex;
+            justify-content: center;
+            /* 居中对齐 */
+            align-items: center;
+            background: none;
+            /* 去掉整条的背景 */
+            margin: 5px 0;
+            /* 上下边距 */
+            gap: 3px;
+            /* 关键：每个小方块之间的间隙 */
+        }
+
+        /* 2. 通用小方块样式 */
+        .info-block {
+            padding: 2px 5px;
+            /* 内边距 */
+            font-size: 8px;
+            /* 字体大小 */
+            color: #333;
+            /* 字体颜色 */
+            cursor: default;
+            font-weight: bold;
+            border-radius: 1px;
+            /* 稍微一点点圆角 */
+            height: 10px;
+            /* 固定高度，保证整齐 */
+            line-height: 16px;
+            /* 文字垂直居中 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 3. 左边深色块 (属性、记事) */
+        .info-block.dark {
+            background: #e4e2e2;
+            /* 深灰色背景 */
+            cursor: pointer;
+            /* 鼠标放上去变手型 */
+        }
+
+        .info-block.dark:hover {
+            background: #c0c0c0;
+        }
+
+        /* 4. 右边浅色块 (年龄、状态) */
+        .info-block.light {
+            background: #f4f4f4;
+            /* 极淡的灰色/米白色背景 */
+            white-space: nowrap;
+            /* 防止文字换行 */
+        }
+
+        /* 5. 状态文字颜色 */
+        .status-red {
+            color: #cc0000 !important;
+        }
+
+        /* 已故/重病 红色 */
+        .status-normal {
+            color: #333;
+        }
+
+        /* === 官职样式微调 === */
+        .line-official {
+            font-size: 10px;
+            /* 之前是14px，现在改小一点 */
+            margin: 3px 0;
+            font-weight: bold;
+            color: #333;
+            display: inline-block;
+            /* 为了让下划线只包裹文字 */
+            border-bottom: 1px solid #ddd;
+            /* 细细的灰色下划线 */
+            padding-bottom: 1px;
+        }
+
+        /* 如果你想要那种彩色的下划线（跟官职颜色一致），用下面这个 */
+        .line-official span {
+            border-bottom: 1px solid currentColor;
+            /* 下划线颜色跟随文字颜色 */
+            padding-bottom: 1px;
+        }
+
+        /* === 跳转链接颜色强制修正 === */
+        .jump-link {
+            cursor: pointer;
+            font-size: 11px;
+            /* 字体小一点 */
+            margin-left: 3px;
+            text-decoration: none !important;
+            /* 去掉默认下划线，我们自己控制 */
+        }
+
+        .jump-link:hover {
+            text-decoration: underline !important;
+        }
+
+        /* 强制颜色（确保生效） */
+        .jump-link.type-imperial {
+            color: #8B0000 !important;
+        }
+
+        /* 皇室深红 */
+        .jump-link.type-noble {
+            color: #2F4F4F !important;
+        }
+
+        /* 世家深青 */
+        .jump-link.type-official {
+            color: #556B2F !important;
+        }
+
+        /* 官宦橄榄绿 */
+        .jump-link.type-common {
+            color: #696969 !important;
+        }
+
+        /* 寒门深灰 */
+        /* 默认颜色（如果没有匹配到类型） */
+        .jump-link.default {
+            color: #4682B4 !important;
+        }
+
+        /* 默认蓝色 */
+
+        /* =============================================
+           10. 次序与折叠按钮样式
+           ============================================= */
+
+        /* 圆圈排行文字样式 */
+        .birth-order-text {
+            font-size: 14px;
+            font-weight: bold;
+            fill: #fff;
+            /* 数字统一为白色 */
+            text-anchor: middle;
+            dominant-baseline: central;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 顶部导航栏 -->
+    <header>
+        <h1>世家谱系录</h1>
+        <div class="toolbar">
+            <button class="btn" id="toggle-custom-btn" onclick="toggleCustomVisibility()">显示次要关系</button>
+            <button class="btn btn-highlight" id="paste-btn" onclick="pastePerson()" disabled>粘贴人物</button>
+            <button class="btn btn-gold" onclick="layoutTreeComplex()">自动整理</button>
+            <button class="btn" onclick="saveData()">保存</button>
+            <button class="btn" onclick="document.getElementById('file-in').click()">读取</button>
+            <button class="btn" onclick="exportImg()">导出</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- 左侧列表栏 -->
+        <div class="sidebar-left">
+            <div class="sb-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>家族名录</span>
+                <button onclick="addFamily()"
+                    style="background: var(--cinnabar); color: white; border: none; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 18px;">+</button>
+            </div>
+            <div class="fam-list" id="fam-list"></div>
+        </div>
+
+        <!-- 中间画布区 -->
+        <div class="canvas-area" id="canvas-wrapper">
+            <div id="family-canvas">
+                <div id="gen-bg-layer"
+                    style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0;">
+                </div>
+                <div id="watermark"></div>
+                <svg class="svg-layer" id="svg-layer"></svg>
+                <div id="nodes-layer"></div>
+            </div>
+
+            <!-- 画布底部操作浮窗 -->
+            <div class="rel-panel" id="rel-panel">
+                <span style="font-size:12px; color:#999; margin-right:10px;">已选 <b style="color:var(--cinnabar)"
+                        id="sel-count">0</b></span>
+                <button class="rel-btn" id="btn-rel" onclick="openModal()" disabled>关系</button>
+                <button class="rel-btn" id="btn-spawn" onclick="spawnChild()" disabled>繁衍</button>
+                <button class="rel-btn" id="btn-copy" onclick="copyPerson()" disabled>复制</button>
+                <button class="rel-btn" id="btn-clone" onclick="clonePerson()" disabled>克隆</button>
+                <button class="rel-btn" onclick="clearSel()">取消</button>
+            </div>
+
+            <!-- 缩放控制 -->
+            <div class="zoom-ctrl">
+                <button onclick="zoom(0.1)">+</button>
+                <button onclick="zoom(-0.1)">-</button>
+                <button onclick="resetView()">⟲</button>
+            </div>
+        </div>
+
+        <!-- 右侧编辑栏 -->
+        <div class="sidebar-right">
+            <div class="form-content">
+                <div class="form-header">人物志</div>
+                <div class="img-upload" id="img-upload-box" onclick="document.getElementById('img-file').click()">
+                    <i class="fas fa-plus"></i>
+                    <img id="img-preview" src="">
+                </div>
+                <input type="file" id="img-file" style="display:none" accept="image/*">
+
+                <div class="row">
+                    <div class="form-group" style="flex:1"><label class="form-label">姓</label><input type="text"
+                            id="p-surname" class="form-input"></div>
+                    <div class="form-group" style="flex:1"><label class="form-label">名</label><input type="text"
+                            id="p-name" class="form-input"></div>
+                    <div class="form-group" style="flex:1"><label class="form-label">字/号</label><input type="text"
+                            id="p-alias" class="form-input"></div>
+                </div>
+
+
+                <div class="form-group">
+                    <label class="form-label">阶级出身</label>
+                    <select id="p-style" class="form-input">
+                        <option value="style-emperor">皇帝</option>
+                        <option value="style-royal">皇族</option>
+                        <option value="style-branch">宗室</option>
+                        <option value="style-noble">世家</option>
+                        <option value="style-official">官宦</option>
+                        <option value="style-common">平民</option>
+                    </select>
+                </div>
+
+                <div class="row">
+                    <div class="form-group" style="flex:1">
+                        <label class="form-label">宗法</label>
+                        <select id="p-lineage" class="form-input">
+                            <option value="lineage-shu">庶出</option>
+                            <option value="lineage-di">嫡出</option>
+                            <option value="lineage-ji">过继</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1">
+                        <label class="form-label">性别</label>
+                        <select id="p-gender" class="form-input">
+                            <option value="男">男</option>
+                            <option value="女">女</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group"><label class="form-label">封号 / 身份</label><input type="text" id="p-title"
+                        class="form-input"></div>
+
+                <!-- 找到之前的“年龄”和“健康”那一行，替换为以下代码 -->
+                <div class="form-group">
+                    <label class="form-label">健康状况</label>
+                    <select id="p-health" class="form-input" onchange="syncStatusFromHealth()">
+                        <option value="健康">健康</option>
+                        <option value="生病">生病</option>
+                        <option value="重病">重病</option>
+                        <option value="死亡">死亡</option>
+                    </select>
+                </div>
+
+                <div class="row">
+                    <div class="form-group" style="flex:1">
+                        <label class="form-label">官职等级</label>
+                        <select id="p-official-rank" class="form-input">
+                            <option value="">无</option>
+                            <option value="一等">一等</option>
+                            <option value="二等">二等</option>
+                            <option value="三等">三等</option>
+                            <option value="四等">四等</option>
+                            <option value="五等">五等</option>
+                            <option value="六等">六等</option>
+                            <option value="七等">七等</option>
+                            <option value="八等">八等</option>
+                            <option value="九等">九等</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:2"><label class="form-label">官职名称</label><input type="text"
+                            id="p-official-post" class="form-input" placeholder="太傅/将军..."></div>
+                </div>
+
+                <div class="form-group"><label class="form-label">特征标签</label><input type="text" id="p-tags"
+                        class="form-input" placeholder="空格分隔"></div>
+                <div class="form-group"><label class="form-label">性格</label><input type="text" id="p-personality"
+                        class="form-input"></div>
+
+                <div class="form-group">
+                    <label class="form-label">往事录</label>
+                    <div id="story-list"
+                        style="margin-top:10px; border:1px solid #eee; min-height:50px; padding:5px; background:#f9f9f9;">
+                    </div>
+                    <button class="btn-rect" style="width:100%; margin-top:5px; font-size:11px;"
+                        onclick="addNewStory()">+ 手动添加往事</button>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">出身家族</label>
+                    <select id="p-origin" class="form-input"></select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">状态</label>
+                    <select id="p-status" class="form-input" onchange="syncHealthFromStatus()"> <!-- 注意这里加了 onchange -->
+                        <option value="alive">在世</option>
+                        <option value="dead">已故</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-rect btn-fill" onclick="savePerson()">录入/更新</button>
+                <button class="btn-rect" onclick="resetForm()">重置</button>
+                <button class="btn-rect" style="color:red" onclick="delPerson()">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 关系缔结弹窗 -->
+    <div class="modal-mask" id="modal-mask">
+        <div class="modal" id="modal-box"></div>
+    </div>
+
+    <!-- 故事编辑器弹窗 -->
+    <div class="modal-mask" id="story-modal">
+        <div class="modal" style="width:700px; height:700px; display:flex; flex-direction:column;">
+            <h3 style="margin-bottom:15px; color:var(--cinnabar);">往事书卷</h3>
+            <div class="form-group">
+                <label class="form-label">标题</label>
+                <input type="text" id="story-title-input" class="form-input">
+            </div>
+            <div class="form-group" style="flex:1; display:flex; flex-direction:column;">
+                <label class="form-label">内容</label>
+                <textarea id="story-content-input"
+                    style="flex:1; width:100%; padding:15px; line-height:1.8; border:1px solid #ddd; background:#fcfaf5;"></textarea>
+            </div>
+            <div style="display:flex; gap:15px; margin-top:15px;">
+                <button class="btn-rect btn-fill" onclick="saveStoryDetail()">保存并封卷</button>
+                <button class="btn-rect" onclick="closeStoryModal()">合上书卷</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 家族设置弹窗 -->
+    <div class="modal-mask" id="family-modal">
+        <div class="modal" style="width:350px;">
+            <h4 style="margin-bottom:15px">家族设置</h4>
+            <div class="form-group">
+                <label class="form-label">家族名称</label>
+                <input type="text" id="f-edit-name" class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">家族等级</label>
+                <select id="f-edit-type" class="form-input">
+                    <option value="type-imperial">皇室</option>
+                    <option value="type-noble">世家</option>
+                    <option value="type-official">官宦</option>
+                    <option value="type-common">寒门</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">标签</label>
+                <input type="text" id="f-edit-tags" class="form-input">
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn-rect btn-fill" style="flex:1" onclick="saveFamilySettings()">保存</button>
+                <button class="btn-rect" style="flex:1"
+                    onclick="document.getElementById('family-modal').style.display='none'">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI设置弹窗 -->
+    <div class="modal-mask" id="ai-settings">
+        <div class="modal" style="width:350px;">
+            <h4 style="margin-bottom:15px">AI 接口配置</h4>
+            <div class="form-group">
+                <label class="form-label">API 服务商</label>
+                <select id="ai-model-type" class="form-input" onchange="updateModelList()">
+                    <option value="deepseek">DeepSeek (OpenAI 兼容)</option>
+                    <option value="gemini">Google Gemini</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">选择模型</label>
+                <select id="ai-model-select" class="form-input"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">API Key</label>
+                <input type="password" id="ai-api-key" class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">代理地址 (可选)</label>
+                <input type="text" id="ai-proxy" class="form-input">
+            </div>
+            <button class="btn-rect btn-fill" style="width:100%" onclick="saveAISettings()">保存配置</button>
+            <button class="btn-rect" style="width:100%; margin-top:5px;"
+                onclick="document.getElementById('ai-settings').style.display='none'">关闭</button>
+        </div>
+    </div>
+
+    <!-- AI 助手浮窗 -->
+    <div id="ai-panel"
+        style="display:none; position:fixed; right:320px; bottom:20px; width:700px; height:600px; background:#fff; border:2px solid var(--ink); box-shadow:0 10px 30px rgba(0,0,0,0.2); z-index:1000; flex-direction:column;">
+        <div
+            style="background:var(--ink); color:#fff; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+            <span><i class="fas fa-robot"></i> 谱系 AI 助手</span>
+            <i class="fas fa-times" onclick="toggleAI()" style="cursor:pointer"></i>
+        </div>
+        <div id="ai-history"
+            style="flex:1; overflow-y:auto; padding:15px; font-size:14px; background:#fcf9f2; border-bottom:1px solid #eee;">
+        </div>
+        <div style="padding:10px; background:#fff">
+            <textarea id="ai-input" placeholder="输入指令..."
+                style="width:100%; height:80px; border:1px solid #ccc; padding:10px; font-size:13px; resize:none;"></textarea>
+            <div style="display:flex; gap:10px; margin-top:5px;">
+                <button class="btn-rect btn-fill" onclick="askAI()" style="flex:2; height:40px;">发送指令</button>
+                <button class="btn-rect" onclick="document.getElementById('ai-settings').style.display='block'"
+                    style="flex:1; font-size:12px;">设置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI 启动球 -->
+    <div style="position:fixed; top: 80px; right: 20px; z-index: 1001;">
+        <button onclick="toggleAI()" class="ai-btn-new">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                <path
+                    d="M7.127 22.562l-7.127 1.438 1.438-7.128 5.689 5.69zm1.414-1.414l11.228-11.225-5.69-5.69-11.224 11.227 5.686 5.688zm15.459-15.459c.639-.639.639-1.674 0-2.313l-3.374-3.373c-.639-.64-1.674-.64-2.313 0l-2.079 2.08 5.687 5.688 2.079-2.082z" />
+            </svg>
+        </button>
+    </div>
+
+    <input type="file" id="file-in" style="display:none" onchange="loadData(this)">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script>
+        /* =============================================
+           1. 全局配置与数据模型
+           ============================================= */
+        let db = { families: {}, cur: null };
+        let sel = [], editId = null, tempImg = null, clipboard = null;
+        let scale = 1, off = { x: 0, y: 0 }, isPan = false, panStart = {};
+        let dragNode = null, dragOffset = {};
+        let currentStories = [];
+        let currentStoryIdx = null;
+        let showCustomRels = false; // 控制自定义关系的显示/隐藏
+        let dragRel = null; // 记录正在拖拽哪条线
+        let dragRelIdx = -1; // 记录关系索引
+        let activeRel = null; // 当前正在被调节的关系
+
+        const modelData = {
+            deepseek: [
+                { name: "DeepSeek-V3", value: "deepseek-chat" },
+                { name: "DeepSeek-R1", value: "deepseek-reasoner" }
+            ],
+            gemini: [
+                { name: "Gemini 1.5 Pro", value: "gemini-1.5-pro" },
+                { name: "Gemini 1.5 Flash", value: "gemini-1.5-flash" },
+                { name: "Gemini 2.0 Pro", value: "gemini-2.0-pro" }
+            ]
+        };
+
+        let aiConfig = JSON.parse(localStorage.getItem('ai_config')) || {
+            type: 'deepseek',
+            model: 'deepseek-chat',
+            key: '',
+            proxy: ''
+        };
+
+        /* =============================================
+           2. IndexedDB 数据库管理
+           ============================================= */
+        const idbHelper = {
+            db: null,
+            init: function () {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open("GenealogyDB", 1);
+                    request.onupgradeneeded = (e) => {
+                        this.db = e.target.result;
+                        if (!this.db.objectStoreNames.contains("genealogy")) {
+                            this.db.createObjectStore("genealogy");
+                        }
+                    };
+                    request.onsuccess = (e) => {
+                        this.db = e.target.result;
+                        resolve();
+                    };
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            },
+            save: function (data) {
+                return new Promise((resolve, reject) => {
+                    if (!this.db) return reject("DB not initialized");
+                    const tx = this.db.transaction("genealogy", "readwrite");
+                    const store = tx.objectStore("genealogy");
+                    store.put(data, "mainData");
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = (e) => reject(e.target.error);
+                });
+            },
+            load: function () {
+                return new Promise((resolve, reject) => {
+                    if (!this.db) return reject("DB not initialized");
+                    const tx = this.db.transaction("genealogy", "readonly");
+                    const store = tx.objectStore("genealogy");
+                    const request = store.get("mainData");
+                    request.onsuccess = (e) => resolve(e.target.result);
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            }
+        };
+
+        /* =============================================
+           3. 核心画布渲染逻辑
+           ============================================= */
+        function renderCanvas() {
+            const f = db.families[db.cur];
+            const box = document.getElementById('nodes-layer');
+            const svg = document.getElementById('svg-layer');
+            const wm = document.getElementById('watermark');
+            const bgLayer = document.getElementById('gen-bg-layer');
+
+            if (box) box.innerHTML = "";
+            if (svg) svg.innerHTML = "";
+            if (bgLayer) bgLayer.innerHTML = "";
+            if (!f) return;
+
+            wm.innerText = f.name.substring(0, 4);
+
+            // --- 背景代数条 ---
+            let maxGen = 1;
+            const GEN_STEP = 880;
+            f.members.forEach(m => {
+                let g = Math.round((m.x - 100) / GEN_STEP) + 1;
+                if (g > maxGen) maxGen = g;
+            });
+            for (let i = 1; i <= maxGen; i++) {
+                const strip = document.createElement('div');
+                strip.className = 'gen-strip';
+                strip.style.left = (100 + (i - 1) * GEN_STEP - 20) + "px";
+                strip.innerHTML = `<div class="gen-label">${getChineseNum(i)}</div>`;
+                bgLayer.appendChild(strip);
+            }
+
+            // --- 连线 (逻辑已在之前修正，这里保持一致) ---
+            const sortedRels = [...f.rels].sort((a, b) => {
+                const getScore = (r) => {
+                    if (r.type === 'custom') return 0;
+                    if (r.type === 'secondary') return 1;
+                    if (r.type === 'parent') {
+                        const child = f.members.find(m => m.id === r.t);
+                        if (child && child.lineage === 'lineage-di') return 10;
+                        return 2;
+                    }
+                    if (r.type === 'spouse') return 10;
+                    return 0;
+                };
+                return getScore(a) - getScore(b);
+            });
+
+            sortedRels.forEach(r => {
+                const s = f.members.find(m => m.id === r.s);
+                const t = f.members.find(m => m.id === r.t);
+                if (s && t) drawLinePath(s, t, r, svg);
+            });
+            sortedRels.forEach(r => {
+                const s = f.members.find(m => m.id === r.s);
+                const t = f.members.find(m => m.id === r.t);
+                if (s && t && r.type === 'custom') drawLinkLabel(s, t, r, svg);
+            });
+
+            // --- 卡片渲染 ---
+            f.members.forEach(m => {
+                const el = document.createElement('div');
+                el.className = `card ${m.style} ${m.status === 'dead' ? 'dead' : ''} ${sel.includes(m.id) ? 'selected' : ''}`;
+                el.style.left = m.x + "px";
+                el.style.top = m.y + "px";
+                el.id = m.id;
+                el.onmousedown = (e) => startDragNode(e, m.id);
+                el.onclick = (e) => { e.stopPropagation(); toggleSel(m.id); };
+                el.ondblclick = (e) => { e.stopPropagation(); editP(m.id); };
+
+                const imgHTML = m.img ? `<img src="${m.img}" class="card-img">` : `<div class="card-img" style="display:flex;align-items:center;justify-content:center;color:#ccc;font-size:40px;background:#f5f5f5"><i class="fas fa-user"></i></div>`;
+                const badgeHTML = m.title ? `<div class="card-badge">${m.title}</div>` : '';
+
+                // === 这里的年龄代码已经被删除 ===
+
+                // 状态块
+                const healthVal = m.health || '健康';
+                const isBadHealth = (healthVal === '死亡' || healthVal === '重病');
+                const statusColorClass = isBadHealth ? 'status-red' : 'status-normal';
+                const statusHTML = `<div class="info-block light ${statusColorClass}">状态 ${healthVal}</div>`;
+
+                // 组合：只剩3个块了 (属性、记事、状态)
+                const infoBarHTML = `
+            <div class="info-bar">
+                <div class="info-block dark" onclick="showAttributes('${m.id}', event)">属性</div>
+                <div class="info-block dark" onclick="showStories('${m.id}', event)">记事</div>
+                ${statusHTML}
+            </div>
+        `;
+
+                // 出身
+                let originHTML = `<div class="line-origin">出身: ${m.origin || f.name}</div>`;
+                if (m.origin && m.origin !== f.name) {
+                    const originFamKey = Object.keys(db.families).find(k => db.families[k].name === m.origin);
+                    const originFam = originFamKey ? db.families[originFamKey] : null;
+                    const famType = originFam ? (originFam.type || 'type-common') : 'default';
+                    originHTML = `<div class="line-origin">出身: ${m.origin} <span class="jump-link ${famType}" onclick="jump('${m.origin}', event)">[跳转]</span></div>`;
+                }
+
+                // 官职
+                let officialHTML = '';
+                if (m.official_rank && m.official_post) {
+                    const colorClass = getRankColorClass(m.official_rank);
+                    officialHTML = `<div class="line-official">【官职：<span class="${colorClass}">${m.official_rank} · ${m.official_post}</span>】</div>`;
+                }
+
+                const tagsHtml = m.tags ? `<div class="tags-wrap">${m.tags.split(' ').map(t => `<span class="tag">${t}</span>`).join('')}</div>` : '';
+
+                el.innerHTML = `
+            ${badgeHTML}
+            ${imgHTML}
+            <div class="card-body">
+                <div class="card-name">${m.surname}${m.name}</div>
+                ${infoBarHTML}
+                ${originHTML}
+                ${officialHTML}
+                <div class="card-divider"></div>
+                ${tagsHtml}
+            </div>`;
+
+                box.appendChild(el);
+            });
+
+            updateBottomPanel();
+        }
+
+        // 确保这个辅助函数也在你的代码里 (放在 renderCanvas 下面即可)
+        function getRankColorClass(rank) {
+            if (!rank) return '';
+            const firstChar = rank.charAt(0);
+            // 简单的判断逻辑
+            if (['一', '二', '三'].includes(firstChar)) return 'rank-purple';
+            if (['四', '五'].includes(firstChar)) return 'rank-red';
+            if (['六', '七'].includes(firstChar)) return 'rank-green';
+            if (['八', '九'].includes(firstChar)) return 'rank-blue';
+            return '';
+        }
+        /* =============================================
+           核心连线绘制函数 (修正版：视觉隐藏父亲线)
+           ============================================= */
+        /* =============================================
+          21. 连线绘制 - 第一步：画线
+          ============================================= */
+        function drawLinePath(p1, p2, relData, svg) {
+            if (relData.isHidden) return; // 隐藏第一个家长的线
+
+            const type = relData.type;
+            const w = 170, h = 300;
+            const x1 = p1.x + w;
+            const y1 = p1.y + h / 2;
+            const x2 = p2.x;
+            const y2 = p2.y + h / 2;
+
+            if (type === 'custom' && typeof showCustomRels !== 'undefined' && !showCustomRels) return;
+
+            // 创建路径
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            let d = "";
+            let isRedLine = false;
+
+            if (type === 'custom') {
+                const cp = relData.cp || { x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 50 };
+                const rx = 2 * cp.x - 0.5 * (x1 + x2);
+                const ry = 2 * cp.y - 0.5 * (y1 + y2);
+                d = `M${x1},${y1} Q${rx},${ry} ${x2},${y2}`;
+                path.setAttribute("stroke", relData.color || "#888");
+                path.setAttribute("stroke-dasharray", "4,2");
+            } else if (type === 'parent') {
+                const midX = x1 + 80;
+                d = `M${x1},${y1} L${midX},${y1} L${midX},${y2} L${x2},${y2}`;
+                isRedLine = (p2.lineage === 'lineage-di');
+                path.setAttribute("stroke", isRedLine ? "#c02c38" : "#999"); // 庶出线设为灰色
+                path.setAttribute("stroke-width", isRedLine ? "2.5" : "1.5");
+            } else {
+                const midX = x1 + 30;
+                d = `M${x1},${y1} L${midX},${y1} L${midX},${y2} L${x2},${y2}`;
+                isRedLine = (type === 'spouse');
+                path.setAttribute("stroke", isRedLine ? "#c02c38" : "#333");
+                path.setAttribute("stroke-width", isRedLine ? "2.5" : "1.5");
+            }
+
+            path.setAttribute("d", d);
+            path.setAttribute("fill", "none");
+            path.style.pointerEvents = "none";
+            svg.appendChild(path);
+
+            // --- 【新功能】绘制排行圆圈 ---
+            if (type === 'parent' && relData.birthOrder) {
+                const midX = x1 + 80;
+                // 圆圈位置放在折线水平段的起点（靠近拐角处）
+                const circleX = x2 - 20;
+                const circleY = y2;
+
+                const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+                // 绘制圆形背景
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute("cx", circleX);
+                circle.setAttribute("cy", circleY);
+                circle.setAttribute("r", "12"); // 半径
+                // 嫡出红底，庶出灰底
+                circle.setAttribute("fill", isRedLine ? "#c02c38" : "#999");
+
+                // 绘制数字
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", circleX);
+                text.setAttribute("y", circleY);
+                text.setAttribute("class", "birth-order-text");
+                text.textContent = relData.birthOrder;
+
+                g.appendChild(circle);
+                g.appendChild(text);
+                svg.appendChild(g);
+            }
+        }
+        function drawOrderMarker(svg, x, y, num, isSolid, color) {
+            const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+            // 绘制圆圈
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute("cx", x);
+            circle.setAttribute("cy", y);
+            circle.setAttribute("r", "8");
+            if (isSolid) {
+                circle.setAttribute("fill", color);
+            } else {
+                circle.setAttribute("fill", "#fff");
+                circle.setAttribute("stroke", color);
+                circle.setAttribute("stroke-width", "1");
+            }
+
+            // 绘制数字
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", x);
+            text.setAttribute("y", y + 3.5); // 微调文字对齐
+            text.setAttribute("text-anchor", "middle");
+            text.setAttribute("font-size", "10px");
+            text.setAttribute("font-family", "Arial");
+            text.setAttribute("font-weight", "bold");
+            text.setAttribute("fill", isSolid ? "#fff" : color);
+            text.textContent = num;
+
+            group.appendChild(circle);
+            group.appendChild(text);
+            svg.appendChild(group);
+        }
+
+        /* =============================================
+           22. 连线绘制 - 第二步：画字 (确保在最顶层)
+           ============================================= */
+        function drawLinkLabel(p1, p2, relData, svg) {
+            if (typeof showCustomRels !== 'undefined' && !showCustomRels) return;
+
+            const w = 170, h = 300;
+            const x1 = p1.x + w, y1 = p1.y + h / 2;
+            const x2 = p2.x, y2 = p2.y + h / 2;
+            const cp = relData.cp || { x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 50 };
+
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", cp.x);
+            text.setAttribute("y", cp.y + 4);
+            text.setAttribute("class", "rel-label" + (activeRel === relData ? " active" : ""));
+
+            // 文字点击事件
+            text.onclick = (e) => {
+                e.stopPropagation();
+                activeRel = (activeRel === relData ? null : relData);
+                renderCanvas();
+            };
+
+            text.textContent = relData.label || "关联";
+            svg.appendChild(text);
+        }
+        /* =============================================
+           4. 人物管理逻辑 (CRUD)
+           ============================================= */
+        // 找到 savePerson 函数，在 p 对象的定义中添加新字段
+        function savePerson() {
+            const f = db.families[db.cur];
+            if (!f) return;
+            const sName = document.getElementById('p-surname').value.trim();
+            const pName = document.getElementById('p-name').value.trim();
+            if (!sName && !pName) return alert("姓名不能为空");
+
+            const oldP = editId ? f.members.find(m => m.id === editId) : null;
+
+            const p = {
+                id: editId || "p_" + Date.now(),
+                uid: oldP ? (oldP.uid || "u_" + Date.now()) : "u_" + Date.now(),
+                surname: sName,
+                name: pName,
+                gender: document.getElementById('p-gender').value,
+                style: document.getElementById('p-style').value,
+                lineage: document.getElementById('p-lineage').value,
+                title: document.getElementById('p-title').value,
+                status: document.getElementById('p-status').value,
+                origin: document.getElementById('p-origin').value || f.name,
+                tags: document.getElementById('p-tags').value,
+                personality: document.getElementById('p-personality').value,
+
+                // --- 修改处：删除了 age，保留其他 ---
+                health: document.getElementById('p-health').value,
+                official_rank: document.getElementById('p-official-rank').value,
+                official_post: document.getElementById('p-official-post').value,
+                // --- 结束 ---
+
+                stories: JSON.parse(JSON.stringify(currentStories || [])),
+                img: tempImg || (oldP ? oldP.img : null),
+                x: oldP ? oldP.x : 100,
+                y: oldP ? oldP.y : 100
+            };
+
+            if (editId) {
+                const idx = f.members.findIndex(m => m.id === editId);
+                f.members[idx] = p;
+            } else {
+                f.members.push(p);
+            }
+
+            syncLinkedPeople(p);
+            syncDescendantsStyle(p.id);
+            resetForm();
+            renderCanvas();
+        }
+
+        function syncLinkedPeople(sourceP) {
+            for (let fId in db.families) {
+                db.families[fId].members.forEach(m => {
+                    if (m.uid === sourceP.uid && m.id !== sourceP.id) {
+                        Object.assign(m, {
+                            surname: sourceP.surname, name: sourceP.name, gender: sourceP.gender,
+                            style: sourceP.style, title: sourceP.title, status: sourceP.status,
+                            tags: sourceP.tags, img: sourceP.img, origin: sourceP.origin,
+                            lineage: sourceP.lineage, personality: sourceP.personality,
+                            stories: JSON.parse(JSON.stringify(sourceP.stories || []))
+                        });
+                    }
+                });
+            }
+        }
+
+        // 这个函数记得放在 savePerson 里调用，用来实现“父亲升级，孩子也跟着升级”
+        function syncDescendantsStyle(parentId) {
+            const f = db.families[db.cur];
+            const parent = f.members.find(m => m.id === parentId);
+            if (!parent) return;
+
+            // 计算孩子该有的阶级
+            let newChildStyle = parent.style;
+            if (parent.style === 'style-emperor') newChildStyle = 'style-royal';
+            else if (parent.style === 'style-royal') newChildStyle = 'style-branch';
+
+            // 找到所有以此人为父/母的孩子
+            const childLinks = f.rels.filter(r => r.s === parentId && r.type === 'parent');
+
+            childLinks.forEach(link => {
+                const child = f.members.find(m => m.id === link.t);
+                if (child && child.surname === parent.surname) { // 仅同步同姓子孙
+                    if (child.style !== newChildStyle) {
+                        child.style = newChildStyle;
+                        syncDescendantsStyle(child.id); // 递归同步下一代
+                    }
+                }
+            });
+        }
+
+        function editP(id) {
+            const m = db.families[db.cur].members.find(x => x.id === id);
+            if (!m) return;
+            editId = id;
+            document.getElementById('p-surname').value = m.surname;
+            document.getElementById('p-name').value = m.name;
+            document.getElementById('p-gender').value = m.gender;
+            document.getElementById('p-style').value = m.style;
+            document.getElementById('p-lineage').value = m.lineage;
+            document.getElementById('p-title').value = m.title || '';
+            document.getElementById('p-status').value = m.status;
+            document.getElementById('p-tags').value = m.tags || '';
+            document.getElementById('p-personality').value = m.personality || "";
+            document.getElementById('p-health').value = m.health || '健康';
+            document.getElementById('p-official-rank').value = m.official_rank || '';
+            document.getElementById('p-official-post').value = m.official_post || '';
+
+            document.querySelector('.sidebar-right').classList.add('active');
+            currentStories = JSON.parse(JSON.stringify(m.stories || []));
+            renderStoryList();
+            updateOriginSelect();
+            document.getElementById('p-origin').value = m.origin;
+
+            const preview = document.getElementById('img-preview');
+            if (m.img) {
+                preview.src = m.img;
+                document.getElementById('img-upload-box').classList.add('has-img');
+            } else {
+                document.getElementById('img-upload-box').classList.remove('has-img');
+                preview.src = ""; // 清空预览
+
+            }
+        }
+
+        function delPerson() {
+            if (!editId) return alert("请先点击一个人物卡片");
+            if (confirm("确定彻底删除此人？")) {
+                const f = db.families[db.cur];
+                f.members = f.members.filter(m => m.id !== editId);
+                f.rels = f.rels.filter(r => r.s !== editId && r.t !== editId);
+                sel = sel.filter(id => id !== editId);
+                resetForm();
+                document.querySelector('.sidebar-right').classList.remove('active');
+                renderCanvas();
+            }
+        }
+
+        /* =============================================
+           5. 辅助与工具函数
+           ============================================ */
+        function getChineseNum(n) {
+            const list = ["", "壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖", "拾"];
+            if (n <= 10) return list[n];
+            if (n < 20) return "拾" + list[n % 10];
+            if (n % 10 === 0) return list[Math.floor(n / 10)] + "拾";
+            return list[Math.floor(n / 10)] + "拾" + list[n % 10];
+        }
+
+        function resetForm() {
+            editId = null; tempImg = null;
+            currentStories = []; // 清空当前正在编辑的往事
+            document.querySelectorAll('.form-input').forEach(e => e.value = "");
+            document.getElementById('p-gender').value = "女";
+            document.getElementById('p-style').value = "style-noble";
+            document.getElementById('p-lineage').value = "lineage-di";
+            document.getElementById('p-status').value = "alive";
+            document.getElementById('p-health').value = "健康"; // 默认健康
+            document.getElementById('img-upload-box').classList.remove('has-img');
+            document.getElementById('story-list').innerHTML = ""; // 清空侧边栏的故事列表显示
+            document.querySelector('.sidebar-right').classList.remove('active');
+            updateOriginSelect();
+        }
+
+        function updateOriginSelect() {
+            const select = document.getElementById('p-origin');
+            select.innerHTML = "";
+            for (let id in db.families) {
+                const op = document.createElement('option');
+                op.value = db.families[id].name;
+                op.innerText = db.families[id].name;
+                select.appendChild(op);
+            }
+            if (db.families[db.cur]) select.value = db.families[db.cur].name;
+        }
+
+        function updateBottomPanel() {
+            const panel = document.getElementById('rel-panel');
+            if (panel) {
+                panel.style.display = sel.length > 0 ? "block" : "none";
+                document.getElementById('sel-count').innerText = sel.length;
+                document.getElementById('btn-rel').disabled = sel.length !== 2;
+                document.getElementById('btn-copy').disabled = sel.length !== 1;
+                document.getElementById('btn-clone').disabled = sel.length !== 1;
+                document.getElementById('btn-spawn').disabled = sel.length !== 2;
+            }
+        }
+
+        function toggleSel(id) {
+            const idx = sel.indexOf(id);
+            if (idx > -1) sel.splice(idx, 1);
+            else { if (sel.length >= 2) sel.shift(); sel.push(id); }
+            renderCanvas();
+        }
+
+        function clearSel() { sel = []; renderCanvas(); }
+
+        /* =============================================
+           6. 家族管理逻辑
+           ============================================= */
+        function addFamily() {
+            const n = prompt("请输入新家族的堂号（例如：琅琊王氏）:");
+            if (n && n.trim() !== "") {
+                const id = "f_" + Date.now();
+                db.families[id] = {
+                    name: n.trim(),
+                    members: [],
+                    rels: [],
+                    type: 'type-noble',
+                    tags: '',
+                    order: Object.keys(db.families).length
+                };
+                switchFam(id);
+            }
+        }
+
+        function switchFam(id) {
+            db.cur = id;
+            resetForm();
+            refresh();
+            resetView();
+            renderCanvas();
+        }
+
+        /* =============================================
+           16. 左侧列表分类渲染与拖拽逻辑 (新增)
+           ============================================= */
+        function refresh() {
+            const list = document.getElementById('fam-list');
+            if (!list) return;
+            list.innerHTML = "";
+
+            // 定义分类顺序和名称
+            const categories = [
+                { id: 'type-imperial', name: '皇室' },
+                { id: 'type-noble', name: '世家' },
+                { id: 'type-official', name: '官宦' },
+                { id: 'type-common', name: '寒门' }
+            ];
+
+            // 获取并排序所有家族 ID (按 order 属性排序)
+            const sortedIds = Object.keys(db.families).sort((a, b) =>
+                (db.families[a].order || 0) - (db.families[b].order || 0)
+            );
+
+            categories.forEach(cat => {
+                // 筛选出属于该分类的家族（默认为世家）
+                const catFamilies = sortedIds.filter(id => (db.families[id].type || 'type-noble') === cat.id);
+
+                if (catFamilies.length > 0) {
+                    // 1. 添加分类标题
+                    const header = document.createElement('div');
+                    header.className = 'fam-group-header';
+                    header.innerText = cat.name;
+                    list.appendChild(header);
+
+                    // 2. 添加该分类下的家族卡片
+                    catFamilies.forEach(id => {
+                        const f = db.families[id];
+                        const d = document.createElement('div');
+                        d.className = `fam-item ${id === db.cur ? 'active' : ''} ${f.type || 'type-noble'}`;
+
+                        // 开启拖拽支持
+                        d.setAttribute('draggable', 'true');
+                        d.dataset.id = id;
+
+                        // 绑定拖拽事件
+                        d.ondragstart = handleDragStart;
+                        d.ondragover = handleDragOver;
+                        d.ondrop = handleDrop;
+                        d.ondragend = function () { this.classList.remove('dragging'); };
+
+                        // 点击切换家族
+                        d.onclick = (e) => {
+                            if (e.target.closest('.fam-btn')) return;
+                            switchFam(id);
+                        };
+
+                        const tagHtml = (f.tags || "").split(' ').map(t => t ? `<span class="fam-tag-mini">${t}</span>` : '').join('');
+                        d.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                        <span style="font-weight:bold; font-size:14px;">${f.name}</span>
+                        <div style="display:flex; gap:8px; align-items:center; color:#999;">
+                            <svg class="fam-btn" onclick="openFamilyModal('${id}')" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M21.7 6.3l-3.7-3.7c-.3-.3-.9-.3-1.2 0L14.6 4.8 19.2 9.4l2.5-2.5c.3-.3.3-.9 0-1.2zM12 7.5L3 16.5V21h4.5l9-9L12 7.5z"/></svg>
+                            <svg class="fam-btn" onclick="delFam('${id}',event)" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.4L17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>
+                        </div>
+                    </div>
+                    <div class="fam-tags-line">${tagHtml}</div>`;
+                        list.appendChild(d);
+                    });
+                }
+            });
+            // 渲染完成后更新画布
+            renderCanvas();
+        }
+
+        // --- 拖拽处理辅助函数 ---
+        let draggedFamId = null;
+
+        function handleDragStart(e) {
+            draggedFamId = this.dataset.id;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault(); // 允许放置
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const targetFamId = this.dataset.id;
+
+            // 如果拖拽的是同一个元素，则不处理
+            if (draggedFamId === targetFamId) return;
+
+            // 简单交换两个家族的 order 属性
+            const sourceOrder = db.families[draggedFamId].order || 0;
+            const targetOrder = db.families[targetFamId].order || 0;
+
+            db.families[draggedFamId].order = targetOrder;
+            db.families[targetFamId].order = sourceOrder;
+
+            // 刷新列表以显示新顺序
+            refresh();
+        }
+
+        function openFamilyModal(id) {
+            editingFamId = id;
+            const f = db.families[id];
+            document.getElementById('f-edit-name').value = f.name;
+            document.getElementById('f-edit-type').value = f.type || 'type-noble';
+            document.getElementById('f-edit-tags').value = f.tags || '';
+            document.getElementById('family-modal').style.display = 'flex';
+        }
+
+        function saveFamilySettings() {
+            const f = db.families[editingFamId];
+            f.name = document.getElementById('f-edit-name').value;
+            f.type = document.getElementById('f-edit-type').value;
+            f.tags = document.getElementById('f-edit-tags').value;
+            document.getElementById('family-modal').style.display = 'none';
+            refresh();
+        }
+
+        function delFam(id, e) {
+            e.stopPropagation();
+            if (Object.keys(db.families).length <= 1) return;
+            if (confirm("确定删除该家族及其所有数据？")) {
+                delete db.families[id];
+                if (db.cur === id) switchFam(Object.keys(db.families)[0]);
+                else refresh();
+            }
+        }
+
+        /* =============================================
+           7. 关系建立与弹窗管理
+           ============================================= */
+        function openModal() {
+            if (sel.length !== 2) return;
+            const box = document.getElementById('modal-box');
+            box.innerHTML = `
+        <h4 style="margin-bottom:15px; border-left:3px solid var(--cinnabar); padding-left:10px;">缔结羁绊</h4>
+        <button class="modal-opt" onclick="addRel('spouse')"><b>正室</b></button>
+        <button class="modal-opt" onclick="addRel('secondary')"><b>侧室</b></button>
+        <button class="modal-opt" onclick="addRel('parent')"><b>血脉</b></button>
+        
+        <div style="margin: 10px 0; padding: 10px; border: 1px dashed #ccc; border-radius:4px;">
+            <div style="font-size:11px; color:#888; margin-bottom:5px;">自定义关系</div>
+            <input type="text" id="custom-rel-name" placeholder="如：暗恋、仇敌" class="form-input" style="margin-bottom:5px;">
+            <input type="color" id="custom-rel-color" value="#888888" style="width:100%; height:25px; border:none; cursor:pointer;">
+            <button class="modal-opt" style="margin-top:5px; background:#f9f9f9;" onclick="addCustomRel()"><b>缔结自定义关系</b></button>
+        </div>
+
+        <button class="modal-opt" style="border-color:red; color:red" onclick="addRel('remove')"><b>解除关系</b></button>
+        <button style="border:none; background:none; color:#999; margin-top:10px; width:100%; cursor:pointer;" onclick="closeModal()">取消</button>
+    `;
+            document.getElementById('modal-mask').style.display = "flex";
+        }
+
+        // 新增：处理自定义关系保存
+        function addCustomRel() {
+            const label = document.getElementById('custom-rel-name').value.trim() || "关联";
+            const color = document.getElementById('custom-rel-color').value;
+            const f = db.families[db.cur];
+
+            // 存入特殊类型
+            f.rels.push({
+                s: sel[0],
+                t: sel[1],
+                type: 'custom',
+                label: label,
+                color: color
+            });
+
+            closeModal();
+            clearSel();
+            renderCanvas();
+        }
+
+        /* =============================================
+           关系缔结逻辑 (修正版：确保关闭弹窗并刷新)
+           ============================================= */
+
+        // 1. 标准关系处理 (正室、侧室、血脉、解除)
+        function addRel(type) {
+            const f = db.families[db.cur];
+            const s = sel[0];
+            const t = sel[1];
+
+            // 先清除这两个人之间已经存在的旧关系，防止重复
+            f.rels = f.rels.filter(r => !((r.s === s && r.t === t) || (r.s === t && r.t === s)));
+
+            // 如果不是点击“解除关系”，则添加新关系
+            if (type !== 'remove') {
+                f.rels.push({ s: s, t: t, type: type });
+            }
+
+            // 【关键】关闭弹窗遮罩，否则屏幕会一直被挡住无法点击
+            closeModal();
+            // 清除人物选中状态
+            clearSel();
+            // 重新渲染画布，使线条生效
+            renderCanvas();
+        }
+
+        // 2. 自定义关系处理 (师徒、义气等)
+        function addCustomRel() {
+            const label = document.getElementById('custom-rel-name').value.trim() || "关联";
+            const color = document.getElementById('custom-rel-color').value;
+            const f = db.families[db.cur];
+            const s = sel[0];
+            const t = sel[1];
+
+            // 添加自定义关系数据
+            f.rels.push({
+                s: s,
+                t: t,
+                type: 'custom',
+                label: label,
+                color: color
+            });
+
+            // 【关键】关闭弹窗遮罩
+            closeModal();
+            // 清除选中
+            clearSel();
+            // 重新渲染
+            renderCanvas();
+        }
+
+        // 3. 关闭弹窗的辅助函数 (确保遮罩层消失)
+        function closeModal() {
+            const mask = document.getElementById('modal-mask');
+            if (mask) {
+                mask.style.display = "none";
+            }
+        }
+
+        /* =============================================
+           8. 复制、粘贴与克隆
+           ============================================= */
+        function copyPerson() {
+            if (sel.length !== 1) return;
+            const p = db.families[db.cur].members.find(m => m.id === sel[0]);
+            if (p) {
+                if (!p.uid) p.uid = "u_" + Date.now();
+                clipboard = JSON.parse(JSON.stringify(p));
+                document.getElementById('paste-btn').disabled = false;
+            }
+        }
+
+        function clonePerson() {
+            if (sel.length !== 1) return;
+            const p = db.families[db.cur].members.find(m => m.id === sel[0]);
+            if (!p.uid) p.uid = "u_" + Date.now();
+            const clone = JSON.parse(JSON.stringify(p));
+            clone.id = "p_" + Date.now();
+            clone.x += 30; clone.y += 30;
+            db.families[db.cur].members.push(clone);
+            renderCanvas();
+        }
+
+        function pastePerson() {
+            if (!clipboard) return;
+            const p = JSON.parse(JSON.stringify(clipboard));
+            p.id = "p_" + Date.now();
+            p.x = (-off.x + 400) / scale; p.y = (-off.y + 300) / scale;
+            db.families[db.cur].members.push(p);
+            renderCanvas();
+        }
+
+        /* =============================================
+           9. 往事录(故事集)管理
+           ============================================= */
+        function renderStoryList() {
+            const list = document.getElementById('story-list');
+            if (!list) return;
+            list.innerHTML = "";
+            currentStories.forEach((s, idx) => {
+                const item = document.createElement('div');
+                item.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid #eee; font-size:12px; background:#fff; margin-bottom:5px; border-radius:3px; cursor:pointer; border-left:3px solid var(--cinnabar);";
+                item.innerHTML = `
+            <span onclick="openStory(${idx})" style="flex:1; overflow:hidden; text-overflow:ellipsis;">
+                <i class="fas fa-book-open" style="color:#999; margin-right:5px;"></i> ${s.title}
+            </span>
+            <span onclick="event.stopPropagation(); deleteStory(${idx})" style="color:#ccc; font-size:16px; cursor:pointer;">&times;</span>
+        `;
+                list.appendChild(item);
+            });
+        }
+
+        function openStory(idx) {
+            currentStoryIdx = idx;
+            const s = currentStories[idx];
+            document.getElementById('story-title-input').value = s.title;
+            document.getElementById('story-content-input').value = s.content;
+            document.getElementById('story-modal').style.display = "flex";
+        }
+
+        function saveStoryDetail() {
+            const title = document.getElementById('story-title-input').value.trim() || "未命名";
+            const content = document.getElementById('story-content-input').value;
+            if (currentStoryIdx !== null) {
+                currentStories[currentStoryIdx] = { title, content, date: Date.now() };
+            } else {
+                currentStories.push({ title, content, date: Date.now() });
+            }
+            renderStoryList();
+            closeStoryModal();
+        }
+
+        function deleteStory(idx) {
+            if (confirm("确定删除这段往事吗？")) {
+                currentStories.splice(idx, 1);
+                renderStoryList();
+            }
+        }
+
+        function addNewStory() {
+            currentStoryIdx = null;
+            document.getElementById('story-title-input').value = "";
+            document.getElementById('story-content-input').value = "";
+            document.getElementById('story-modal').style.display = "flex";
+        }
+
+        function closeStoryModal() { document.getElementById('story-modal').style.display = "none"; }
+
+        /* =============================================
+           10. 自动布局算法 (分层递归版)
+           ============================================= */
+        function layoutTreeComplex() {
+            const f = db.families[db.cur];
+            if (!f || !f.members.length) return;
+
+            const CARD_W = 170, CARD_H = 300, GAP_Y = 50;
+            const STEP_X_SPOUSE = 280;
+            const STEP_X_CHILD = 600;
+
+            const spouseMap = {}, parentMap = {}, isTarget = new Set();
+
+            // 【核心修正】：只处理 parent, spouse, secondary。忽略 custom
+            f.rels.forEach(r => {
+                if (r.type === 'custom') return; // 跳过自定义关系，不参与布局计算
+
+                if (r.type === 'parent') {
+                    if (!parentMap[r.s]) parentMap[r.s] = [];
+                    parentMap[r.s].push(r.t);
+                    isTarget.add(r.t); // 标记为孩子，用于寻找根节点
+                } else if (r.type === 'spouse' || r.type === 'secondary') {
+                    // 只有正式的夫妻或侍妾才参与横向排布
+                    if (!spouseMap[r.s]) spouseMap[r.s] = [];
+                    spouseMap[r.s].push({ t: r.t, type: r.type });
+                    isTarget.add(r.t); // 标记为配偶，通常配偶不作为树的起点
+                }
+            });
+
+            // ... (后续递归计算 getH 和 applyPlace 的代码保持不变) ...
+
+            function getPrincipalSpouseId(id) {
+                const rels = spouseMap[id] || [];
+                const spouses = rels.filter(r => r.type === 'spouse');
+                if (spouses.length === 0) return null;
+                return spouses[0].t;
+            }
+
+            function getH(id) {
+                const rels = spouseMap[id] || [];
+                const kids = parentMap[id] || [];
+                if (rels.length === 0 && kids.length === 0) return CARD_H;
+                let h = 0;
+                if (rels.length > 0) {
+                    rels.forEach((r, i) => h += getH(r.t) + (i ? GAP_Y : 0));
+                } else if (kids.length > 0) {
+                    kids.forEach((kId, i) => h += getH(kId) + (i ? GAP_Y : 0));
+                }
+                return Math.max(CARD_H, h);
+            }
+
+            const visited = new Set();
+            function applyPlace(id, x, y) {
+                if (visited.has(id)) return;
+                visited.add(id);
+                const m = f.members.find(p => p.id === id);
+                if (!m) return;
+                m.x = x; m.y = y;
+
+                const rels = spouseMap[id] || [];
+                const kids = parentMap[id] || [];
+
+                if (rels.length > 0) {
+                    const principalId = getPrincipalSpouseId(id);
+                    let curY = y;
+                    if (principalId) {
+                        applyPlace(principalId, x + STEP_X_SPOUSE, curY);
+                        curY += getH(principalId) + GAP_Y;
+                    }
+                    rels.forEach(r => {
+                        if (r.t !== principalId) {
+                            applyPlace(r.t, x + STEP_X_SPOUSE, curY);
+                            curY += getH(r.t) + GAP_Y;
+                        }
+                    });
+                } else if (kids.length > 0) {
+                    let curKidY = y;
+                    kids.forEach(kId => {
+                        const kh = getH(kId);
+                        applyPlace(kId, x + STEP_X_CHILD, curKidY);
+                        curKidY += kh + GAP_Y;
+                    });
+                }
+            }
+
+            const roots = f.members.filter(m => !isTarget.has(m.id));
+            let startY = 100;
+            roots.forEach(r => {
+                const totalH = getH(r.id);
+                applyPlace(r.id, 100, startY);
+                startY += totalH + 300;
+            });
+
+            f.members.forEach(m => {
+                if (!visited.has(m.id)) {
+                    m.x = 100; m.y = startY; startY += CARD_H + GAP_Y;
+                }
+            });
+
+            renderCanvas();
+        }
+
+        /* =============================================
+           11. AI 助手逻辑
+           ============================================= */
+        function toggleAI() {
+            const p = document.getElementById('ai-panel');
+            p.style.display = p.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        function updateModelList() {
+            const type = document.getElementById('ai-model-type').value;
+            const modelSelect = document.getElementById('ai-model-select');
+            modelSelect.innerHTML = "";
+            modelData[type].forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.value;
+                opt.innerText = m.name;
+                if (m.value === aiConfig.model) opt.selected = true;
+                modelSelect.appendChild(opt);
+            });
+        }
+
+        function saveAISettings() {
+            aiConfig.type = document.getElementById('ai-model-type').value;
+            aiConfig.model = document.getElementById('ai-model-select').value;
+            aiConfig.key = document.getElementById('ai-api-key').value;
+            aiConfig.proxy = document.getElementById('ai-proxy').value;
+            localStorage.setItem('ai_config', JSON.stringify(aiConfig));
+            document.getElementById('ai-settings').style.display = 'none';
+        }
+
+        async function askAI() {
+            if (!aiConfig.key) return alert("请先在设置中填入 API Key！");
+            const input = document.getElementById('ai-input');
+            const userText = input.value.trim();
+            if (!userText) return;
+
+            let context = "作为史官回复：\n";
+            if (sel.length > 0) {
+                const p = db.families[db.cur].members.find(m => m.id === sel[0]);
+                context += `选中人物：${p.surname}${p.name}，身份：${p.title}\n`;
+            }
+
+            appendMsg("User", userText);
+            input.value = "";
+
+            try {
+                const responseText = aiConfig.type === 'deepseek' ? await callDeepSeek(context, userText) : await callGemini(context, userText);
+                appendMsg("AI", responseText);
+            } catch (err) {
+                appendMsg("System", "调用失败: " + err.message);
+            }
+        }
+
+        function appendMsg(role, text) {
+            const history = document.getElementById('ai-history');
+            const div = document.createElement('div');
+            div.style.cssText = "margin-bottom:15px; padding:12px; background:#fff; border:1px solid #ddd;";
+            const safeText = text.replace(/`/g, "\\`").replace(/"/g, "&quot;");
+            const actionBtn = role === "AI" ? `<button onclick="appendToNotes(\`${safeText}\`)" style="margin-top:5px; font-size:11px;">追加至往事录</button>` : "";
+            div.innerHTML = `<b>${role}:</b> <div>${text}</div>${actionBtn}`;
+            history.appendChild(div);
+            history.scrollTop = history.scrollHeight;
+        }
+
+        function appendToNotes(text) {
+            if (!editId) return alert("请双击人物卡打开编辑。");
+            const title = prompt("往事标题：", "新往事");
+            if (title) currentStories.push({ title, content: text, date: Date.now() });
+            renderStoryList();
+        }
+
+        async function callDeepSeek(context, userMsg) {
+            const url = (aiConfig.proxy || "https://api.deepseek.com") + "/chat/completions";
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiConfig.key}` },
+                body: JSON.stringify({
+                    model: aiConfig.model,
+                    messages: [{ role: "system", content: context }, { role: "user", content: userMsg }]
+                })
+            });
+            const data = await res.json();
+            return data.choices[0].message.content;
+        }
+
+        async function callGemini(context, userMsg) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${aiConfig.model}:generateContent?key=${aiConfig.key}`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: context + userMsg }] }] })
+            });
+            const data = await res.json();
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        /* =============================================
+           12. 数据保存与加载 (IndexedDB / File)
+           ============================================= */
+        async function saveData() {
+            await idbHelper.save(db);
+            const blob = new Blob([JSON.stringify(db, null, 2)], { type: "application/json" });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `世家谱系录_${db.families[db.cur].name}.json`;
+            a.click();
+        }
+
+        async function loadData(input) {
+            if (!input.files[0]) return;
+            const reader = new FileReader();
+            reader.onload = async e => {
+                db = JSON.parse(e.target.result);
+                await idbHelper.save(db);
+                refresh();
+                resetView();
+            };
+            reader.readAsText(input.files[0]);
+        }
+
+        function exportImg() {
+            const el = document.getElementById('family-canvas');
+            const t = el.style.transform;
+            el.style.transform = "none";
+            html2canvas(el, { backgroundColor: '#f4f2ed' }).then(c => {
+                const a = document.createElement('a');
+                a.href = c.toDataURL();
+                a.download = "genealogy.png";
+                a.click();
+                el.style.transform = t;
+            });
+        }
+
+        /* =============================================
+          13. 画布交互与拖拽 (完整修正版)
+          ============================================= */
+        function initCanvasEvents() {
+            const wrap = document.getElementById('canvas-wrapper');
+
+            // 1. 缩放逻辑
+            wrap.addEventListener('wheel', e => {
+                e.preventDefault();
+                const delta = -e.deltaY * 0.001;
+                const oldScale = scale;
+                scale = Math.max(0.1, Math.min(3, scale + delta));
+                const rect = wrap.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                off.x -= (mouseX - off.x) * (scale / oldScale - 1);
+                off.y -= (mouseY - off.y) * (scale / oldScale - 1);
+                updateView();
+            }, { passive: false });
+
+            // 2. 鼠标按下逻辑 (包含背景点击判定)
+            wrap.addEventListener('mousedown', e => {
+                // 判断点击的是否是背景区域（画布容器、画布本体、或水印）
+                if (['canvas-wrapper', 'family-canvas', 'watermark'].includes(e.target.id)) {
+                    // --- A. 准备平移画布 ---
+                    isPan = true;
+                    panStart = { x: e.clientX - off.x, y: e.clientY - off.y };
+                    wrap.style.cursor = "grabbing";
+
+                    // --- B. 重置侧边栏与选中 ---
+                    resetForm();  // 重置表单并自动收起右侧人物志
+                    clearSel();   // 取消当前人物的选中状态
+
+                    // --- C. [核心新增] 固定/取消激活的线条调节 ---
+                    if (typeof activeRel !== 'undefined' && activeRel) {
+                        activeRel = null; // 停止线条随鼠标移动
+                        renderCanvas();   // 重新渲染以恢复文字颜色
+                    }
+                }
+            });
+
+            // 3. 鼠标移动逻辑 (处理人物拖拽 & 线条调节)
+            window.addEventListener('mousemove', e => {
+                if (isPan) {
+                    // 画布平移
+                    off.x = e.clientX - panStart.x;
+                    off.y = e.clientY - panStart.y;
+                    updateView();
+                }
+                else if (dragNode) {
+                    // 人物卡片拖拽
+                    const m = db.families[db.cur].members.find(x => x.id === dragNode);
+                    if (m) {
+                        m.x = (e.clientX - dragOffset.mx) / scale + dragOffset.nx;
+                        m.y = (e.clientY - dragOffset.my) / scale + dragOffset.ny;
+                        renderCanvas();
+                    }
+                }
+
+                // 【新增】处理自定义连线文字跟随鼠标
+                if (typeof activeRel !== 'undefined' && activeRel) {
+                    const rect = wrap.getBoundingClientRect();
+                    // 复杂的坐标转换：将屏幕鼠标位置转为画布内部 1:1 坐标
+                    const mouseX = (e.clientX - rect.left - off.x) / scale;
+                    const mouseY = (e.clientY - rect.top - off.y) / scale;
+
+                    activeRel.cp = { x: mouseX, y: mouseY }; // 更新控制点
+                    renderCanvas(); // 实时重绘线条
+                }
+            });
+
+            // 4. 鼠标松开逻辑
+            window.addEventListener('mouseup', () => {
+                isPan = false;
+                dragNode = null;
+                wrap.style.cursor = "grab";
+            });
+        }
+
+        function startDragNode(e, id) {
+            e.stopPropagation();
+            dragNode = id;
+            const m = db.families[db.cur].members.find(x => x.id === id);
+            dragOffset = { mx: e.clientX, my: e.clientY, nx: m.x, ny: m.y };
+        }
+
+        function zoom(d) { scale = Math.max(0.1, Math.min(3, scale + d)); updateView(); }
+        function resetView() { scale = 1; off = { x: 0, y: 0 }; updateView(); }
+        function updateView() { document.getElementById('family-canvas').style.transform = `translate(${off.x}px, ${off.y}px) scale(${scale})`; }
+
+        /* =============================================
+           14. 初始化入口
+           ============================================= */
+        window.onload = async function () {
+            await idbHelper.init();
+            const loaded = await idbHelper.load();
+            if (loaded) db = loaded; else initTemplates();
+            refresh();
+            initCanvasEvents();
+            if (aiConfig.key) document.getElementById('ai-api-key').value = aiConfig.key;
+            updateModelList();
+        };
+
+        function initTemplates() {
+            const id = "f_demo";
+            db.families[id] = {
+                name: "琅琊王氏", members: [
+                    { id: "p1", surname: "王", name: "导", style: "style-noble", x: 400, y: 100 },
+                    { id: "p2", surname: "曹", name: "氏", style: "style-noble", x: 600, y: 100 }
+                ], rels: [{ s: "p1", t: "p2", type: "spouse" }]
+            };
+            db.cur = id;
+        }
+
+        function jump(n, e) {
+            e.stopPropagation();
+            for (let id in db.families) if (db.families[id].name === n) return switchFam(id);
+            if (confirm(`创建家族${n}?`)) { const id = "f_" + Date.now(); db.families[id] = { name: n, members: [], rels: [] }; switchFam(id); }
+        }
+
+        /* =============================================
+           15.修正功能：粘贴剪贴板图片支持
+           ============================================= */
+        window.addEventListener('paste', function (e) {
+            // 检查是否打开了故事编辑弹窗，如果打开了则不触发图片粘贴，防止干扰文字输入
+            const storyModal = document.getElementById('story-modal');
+            if (storyModal && storyModal.style.display === 'flex') return;
+
+            // 获取剪贴板内容
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+
+            for (let i = 0; i < items.length; i++) {
+                // 判断是否为图片类型
+                if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
+                    const reader = new FileReader();
+
+                    reader.onload = function (event) {
+                        // 1. 更新全局临时图片变量，供 savePerson 函数保存使用
+                        tempImg = event.target.result;
+
+                        // 2. 更新右侧编辑栏的预览图
+                        const preview = document.getElementById('img-preview');
+                        const uploadBox = document.getElementById('img-upload-box');
+
+                        if (preview && uploadBox) {
+                            preview.src = tempImg;
+                            uploadBox.classList.add('has-img');
+                            console.log("图片已成功粘贴至预览区");
+                        }
+                    };
+                    reader.readAsDataURL(blob);
+                    break; // 找到一张图片后就停止，防止多图粘贴冲突
+                }
+            }
+        });
+
+
+        /* =============================================
+           18. 快速繁衍后代功能 (完整终极版)
+           ============================================= */
+        function spawnChild() {
+            if (sel.length !== 2) return;
+            const f = db.families[db.cur];
+            const p1 = f.members.find(m => m.id === sel[0]);
+            const p2 = f.members.find(m => m.id === sel[1]);
+
+            // --- 【新逻辑】计算排行：看 P1 已经有多少个孩子了 ---
+            // 统计 P1 作为起点(s) 的所有类型为 'parent' 的关系
+            const existingChildrenCount = f.rels.filter(r => r.s === p1.id && r.type === 'parent').length;
+            const birthOrder = existingChildrenCount + 1; // 当前排行
+
+            const inheritedSurname = p1.surname;
+            let childStyle = p1.style;
+            if (p1.style === 'style-emperor') childStyle = 'style-royal';
+            else if (p1.style === 'style-royal') childStyle = 'style-branch';
+
+            let childLineage = 'lineage-di';
+            const isSecondary = f.rels.find(r =>
+                ((r.s === p1.id && r.t === p2.id) || (r.s === p2.id && r.t === p1.id)) &&
+                r.type === 'secondary'
+            );
+            if (isSecondary) childLineage = 'lineage-shu';
+
+            const newId = "p_" + Date.now();
+            const newChild = {
+                id: newId, uid: "u_" + Date.now(),
+                surname: inheritedSurname, name: "新后辈",
+                gender: "男", style: childStyle, lineage: childLineage,
+                status: "alive", origin: f.name, stories: [],
+                x: p2.x + 600, y: p2.y
+            };
+
+            f.members.push(newChild);
+
+            // --- 【核心修改】将 birthOrder 存入关系中 ---
+            // 第一个人（家主）的线：隐藏
+            f.rels.push({ s: p1.id, t: newId, type: 'parent', isHidden: true, birthOrder: birthOrder });
+            // 第二个人的线：显示，并带有排行
+            if (p1.id !== p2.id) {
+                f.rels.push({ s: p2.id, t: newId, type: 'parent', birthOrder: birthOrder });
+            }
+
+            if (typeof layoutTreeComplex === 'function') layoutTreeComplex();
+            clearSel();
+            renderCanvas();
+            if (typeof editP === 'function') editP(newId);
+
+            // 6. UI 交互与自动布局
+            // 运行自动整理布局
+            if (typeof layoutTreeComplex === 'function') layoutTreeComplex();
+
+            // 清除选择并重新渲染画布
+            clearSel();
+            renderCanvas();
+
+            // 镜头对焦到新人物
+            if (typeof focusOnNode === 'function') focusOnNode(newId);
+
+            // 自动打开右侧编辑栏
+            if (typeof editP === 'function') editP(newId);
+
+            // 自动聚焦名字输入框，方便直接修改名字
+            setTimeout(() => {
+                const nameInput = document.getElementById('p-name');
+                if (nameInput) {
+                    nameInput.focus();
+                    nameInput.select();
+                }
+            }, 500);
+        }
+
+        /* =============================================
+           19. 镜头对焦功能 (新增)
+           ============================================= */
+        function focusOnNode(id) {
+            const f = db.families[db.cur];
+            const m = f.members.find(x => x.id === id);
+            if (!m) return;
+
+            const wrap = document.getElementById('canvas-wrapper');
+            const vw = wrap.clientWidth;
+            const vh = wrap.clientHeight;
+
+            // 计算让节点居中的偏移量
+            // 算法：(视口中心) - (缩放后的节点中心坐标)
+            scale = 0.8; // 自动对焦时稍微缩小一点，看得更全
+            off.x = (vw / 2) - (m.x * scale) - (85 * scale); // 85是卡片宽度一半
+            off.y = (vh / 2) - (m.y * scale) - (150 * scale); // 150是卡片高度一半
+
+            updateView();
+        }
+
+        /* =============================================
+           20. 阶级继承与递归同步逻辑 (新增)
+           ============================================= */
+
+        // 根据父辈阶级计算子辈阶级
+        function calculateChildStyle(parentStyle) {
+            if (parentStyle === 'style-emperor') return 'style-royal'; // 皇帝之子 -> 皇室
+            if (parentStyle === 'style-royal') return 'style-branch';  // 皇室之子 -> 宗室
+            return parentStyle; // 其他情况（世家、官宦等）直接继承
+        }
+
+        // 递归同步所有子孙的阶级
+        function syncDescendantsStyle(parentId) {
+            const f = db.families[db.cur];
+            const parent = f.members.find(m => m.id === parentId);
+            if (!parent) return;
+
+            const newChildStyle = calculateChildStyle(parent.style);
+
+            // 寻找所有以此人为“父/母”的孩子 (rels 中 s 为此人且类型为 parent)
+            const childLinks = f.rels.filter(r => r.s === parentId && r.type === 'parent');
+
+            childLinks.forEach(link => {
+                const child = f.members.find(m => m.id === link.t);
+                if (child) {
+                    // 只有当孩子的姓氏与该家长一致时，才同步阶级（模拟宗族继承，防止随母方阶级改变）
+                    if (child.surname === parent.surname) {
+                        if (child.style !== newChildStyle) {
+                            child.style = newChildStyle;
+                            // 递归：继续同步孙辈
+                            syncDescendantsStyle(child.id);
+                        }
+                    }
+                }
+            });
+        }
+
+        function toggleCustomVisibility() {
+            showCustomRels = !showCustomRels;
+            const btn = document.getElementById('toggle-custom-btn');
+            btn.innerText = showCustomRels ? "隐藏次要关系" : "显示次要关系";
+            btn.classList.toggle('btn-highlight', !showCustomRels);
+            renderCanvas(); // 重新渲染
+        }
+
+        /* === 新增：状态与健康联动逻辑 === */
+
+        // 当改变“健康状况”时
+        function syncStatusFromHealth() {
+            const health = document.getElementById('p-health').value;
+            const statusSelect = document.getElementById('p-status');
+
+            if (health === '死亡') {
+                statusSelect.value = 'dead'; // 自动选为“已故”
+            } else {
+                // 如果是从“死亡”改回“健康/生病”，状态自动变回“在世”
+                // (当然你也可以选择不自动变回，看需求，这里我做了自动变回方便操作)
+                if (statusSelect.value === 'dead') {
+                    statusSelect.value = 'alive';
+                }
+            }
+        }
+
+        // 当改变“人物状态”时
+        function syncHealthFromStatus() {
+            const status = document.getElementById('p-status').value;
+            const healthSelect = document.getElementById('p-health').value;
+            const healthDom = document.getElementById('p-health');
+
+            if (status === 'dead') {
+                healthDom.value = '死亡'; // 自动选为“死亡”
+            } else {
+                // 如果是从“已故”改回“在世”，且健康还是“死亡”，则重置为“健康”
+                if (healthSelect === '死亡') {
+                    healthDom.value = '健康';
+                }
+            }
+        }
+
+    </script>
+
+</body>
+
+</html>
